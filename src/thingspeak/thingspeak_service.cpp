@@ -11,6 +11,7 @@ static uint32_t lastThingSpeakPostAt = 0;
 static int lastThingSpeakHttpCode = 0;
 
 void initThingSpeakService() {
+  tsClient.setTimeout(5); // Batas timeout TCP/HTTP client 5 detik untuk mencegah hang Task WDT
   ThingSpeak.begin(tsClient);
 }
 
@@ -18,6 +19,13 @@ void thingSpeakTask(void *parameter) {
   (void)parameter;
   wdtRegisterCurrentTask("ThingSpeakTask");
   initThingSpeakService();
+
+  // WiFiManager may wait for the captive-portal timeout. Run it in this
+  // worker after the ToF and occupancy tasks have started, and unregister this
+  // task from the watchdog while the library is blocking.
+  wdtUnregisterCurrentTask("ThingSpeakTask");
+  startWiFiManagerAutoConnect();
+  wdtRegisterCurrentTask("ThingSpeakTask");
 
   for (;;) {
     wdtFeed();

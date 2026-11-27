@@ -184,7 +184,8 @@ static void readOneSensor(VL53L0X &sensor, SensorState &state,
   }
 
   const uint16_t rangeMm = sensor.readRangeSingleMillimeters();
-  const bool timedOut = sensor.timeoutOccurred();
+  // Tangkap seluruh mode kegagalan: timeout register, error status I2C (NACK/bus error), atau pembacaan gagal (65535)
+  const bool timedOut = sensor.timeoutOccurred() || (sensor.last_status != 0) || (rangeMm == 65535);
   addMeasurement(state, rangeMm, timedOut, triggerMm, releaseMm);
 }
 
@@ -194,6 +195,7 @@ void initToFSensors() {
   digitalWrite(PIN_XSHUT_A, LOW);
   digitalWrite(PIN_XSHUT_B, LOW);
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 100000);
+  Wire.setTimeOut(50); // Timeout hardware I2C 50ms untuk mencegah bus hang 24/7
   logLine("I2C: SDA GPIO%d, SCL GPIO%d | XSHUT A GPIO%d, B GPIO%d",
           PIN_I2C_SDA, PIN_I2C_SCL, PIN_XSHUT_A, PIN_XSHUT_B);
 }
@@ -230,7 +232,10 @@ void tofReadTask(void *parameter) {
         stateB.active,
     };
 
-    xQueueSend(sensorQueue, &snapshot, portMAX_DELAY);
+    // Non-blocking timeout 10ms: jika antrean penuh (misal occupancy task lambat), lewati frame agar tidak deadlock/WDT reboot
+    if (xQueueSend(sensorQueue, &snapshot, pdMS_TO_TICKS(10)) != pdTRUE) {
+      // Frame dilewati demi kestabilan task sensor 24/7
+    }
 
     wdtFeed();
 

@@ -127,6 +127,7 @@ extern QueueHandle_t sensorQueue;
 extern QueueHandle_t commandQueue;
 extern SemaphoreHandle_t serialMutex;
 extern SemaphoreHandle_t cloudDataMutex;
+extern CloudSyncData cloudData;
 extern volatile bool requestWifiPortal;
 
 // Fungsi logging thread-safe bersama

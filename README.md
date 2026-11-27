@@ -68,7 +68,7 @@ Watchdog Timer (`src/wdt/`) melindungi sistem dari potensi hang atau kebuntuan:
   - **SSID**: `ESP32-RoomCounter-AP` (Password: `12345678`)
   - **IP Portal**: `192.168.4.1`
 - **Konfigurasi Web**: Menyediakan kolom input untuk SSID, Password Wi-Fi, serta **ThingSpeak Channel ID** dan **Write API Key**.
-- **Non-blocking Timeout**: Timeout 120 detik; jika tidak dikonfigurasi, alat tetap aktif menghitung okupansi secara offline.
+- **Portal dan pembacaan sensor**: WiFiManager berjalan dari `ThingSpeakTask` setelah task sensor dan okupansi aktif. Portal dapat menunggu sampai 120 detik, tetapi pembacaan sensor tetap berjalan.
 - **On-Demand Portal**: Ketik `W` atau `wifi` pada Serial Monitor untuk membuka portal kapan saja.
 
 ---
@@ -84,6 +84,14 @@ Berjalan pada **Core 0** (Core protokol jaringan ESP32) agar transmisi data tida
 - **Rate-Limit**: Minimal 15 detik (sesuai aturan ThingSpeak free tier) dan dikirim berkala setiap 20 detik.
 
 ---
+
+## Posisi Sensor dan Kalibrasi
+
+Untuk menghitung arah orang yang melewati satu pintu, pasang sensor pada sisi pintu, bukan berdampingan di atas pintu menghadap ke bawah. A harus terlewati lebih dulu saat orang masuk, lalu B. Pasang keduanya pada ketinggian sama, sekitar 80-100 cm dari lantai sebagai titik awal, dan arahkan melintang ke jalur lewat menuju permukaan tetap di seberangnya. Mulai dengan jarak sekitar 50-60 cm sepanjang arah berjalan jika ruang memungkinkan; ini titik awal, bukan ukuran wajib. Jika A dan B sering aktif bersamaan, tambah jarak atau sesuaikan arah sensor.
+
+Ambang di `src/config.h` bekerja dengan kondisi jarak aktif `<= TRIGGER_MM` dan jarak kosong `>= RELEASE_MM`. Saat kosong, permukaan di seberang harus terbaca lebih jauh dari nilai release. Saat orang lewat, jarak ke tubuh harus turun di bawah nilai trigger. Contoh: jika jarak kosong sekitar 800 mm dan orang terbaca sekitar 350 mm, coba trigger 500 mm dan release 650 mm. Setel sensor A dan B secara terpisah berdasarkan hasil di Serial Monitor.
+
+Hindari sensor melihat daun pintu yang bergerak. Jika tidak ada permukaan tetap dalam jangkauan, pembacaan tanpa target dianggap sebagai kondisi kosong oleh firmware.
 
 ## Wiring Pin
 

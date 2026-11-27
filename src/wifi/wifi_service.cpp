@@ -40,6 +40,7 @@ void saveThingSpeakConfig(unsigned long channel, const String &key) {
 
 void initWiFiService() {
   loadIotConfig();
+  WiFi.setAutoReconnect(true);
 }
 
 bool startWiFiManagerAutoConnect() {

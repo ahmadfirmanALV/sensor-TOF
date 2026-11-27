@@ -17,6 +17,7 @@ QueueHandle_t sensorQueue = nullptr;
 QueueHandle_t commandQueue = nullptr;
 SemaphoreHandle_t serialMutex = nullptr;
 SemaphoreHandle_t cloudDataMutex = nullptr;
+CloudSyncData cloudData{};
 volatile bool requestWifiPortal = false;
 
 // ==============================================================================
@@ -121,9 +122,6 @@ void setup() {
 
   // Inisialisasi Modul Wi-Fi & Parameter IoT (NVS)
   initWiFiService();
-
-  // Jalankan WiFiManager Captive Portal (jika belum tersambung)
-  startWiFiManagerAutoConnect();
 
   // Inisialisasi Watchdog Timer untuk seluruh alur
   initWatchdog(WDT_TIMEOUT_SECONDS);

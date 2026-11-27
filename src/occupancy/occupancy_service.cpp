@@ -14,10 +14,36 @@ static uint32_t crossingStartedAt = 0;
 static bool previousAActive = false;
 static bool previousBActive = false;
 
+// Manajemen umur Flash SPI (NVS wear-leveling):
+// Debounce penulisan NVS agar tidak menulis flash setiap ada orang lewat
+static bool countsDirty = false;
+static uint32_t lastCountChangeAt = 0;
+static uint32_t lastNvsSaveAt = 0;
+
 static void saveCounts() {
   preferences.putUShort("count", occupancyCount);
   preferences.putUInt("entry", totalEntry);
   preferences.putUInt("exit", totalExit);
+  countsDirty = false;
+  lastNvsSaveAt = millis();
+}
+
+static void markCountsDirty(uint32_t now) {
+  countsDirty = true;
+  lastCountChangeAt = now;
+}
+
+static void flushCountsIfQuiet(uint32_t now) {
+  // Simpan otomatis ke NVS jika data berubah dan jalur kosong/tenang selama 5 detik,
+  // atau batas maksimal 60 detik jika lalu lalang terus menerus.
+  if (countsDirty && ((static_cast<uint32_t>(now - lastCountChangeAt) >= 5000) ||
+                      (static_cast<uint32_t>(now - lastNvsSaveAt) >= 60000))) {
+    saveCounts();
+    logLine("[NVS] Data okupansi disimpan otomatis (debounced): Di Dalam=%u | Masuk=%u | Keluar=%u",
+            static_cast<unsigned int>(occupancyCount),
+            static_cast<unsigned int>(totalEntry),
+            static_cast<unsigned int>(totalExit));
+  }
 }
 
 static void logOccupancy(const char *event) {
@@ -48,7 +74,7 @@ static void completeEntry() {
   if (occupancyCount < MAX_OCCUPANCY_COUNT) {
     ++occupancyCount;
   }
-  saveCounts();
+  markCountsDirty(millis());
   logOccupancy("MASUK A->B");
   syncCloudPending();
 }
@@ -59,11 +85,11 @@ static void completeExit() {
   }
   if (occupancyCount > 0) {
     --occupancyCount;
-    saveCounts();
+    markCountsDirty(millis());
     logOccupancy("KELUAR B->A");
     syncCloudPending();
   } else {
-    saveCounts();
+    markCountsDirty(millis());
     logLine("[KELUAR B->A] Diabaikan karena hitungan di dalam sudah 0; Total Keluar=%u",
             static_cast<unsigned int>(totalExit));
     syncCloudPending();
@@ -269,6 +295,8 @@ void occupancyTask(void *parameter) {
     wdtFeed();
 
     const uint32_t now = millis();
+    flushCountsIfQuiet(now);
+
     if (static_cast<uint32_t>(now - lastDebugAt) >= DEBUG_PRINT_INTERVAL_MS) {
       lastDebugAt = now;
       printSystemStatus(haveSnapshot ? &latestSnapshot : nullptr);
